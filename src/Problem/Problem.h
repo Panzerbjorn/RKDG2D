@@ -90,9 +90,11 @@ public:
 
     //- Left  eigenvectors
     std::pair<numvector<numvector<double, 5>, 5>, numvector<numvector<double, 5>, 5>> getL(const numvector<double, 5>& sol) const;
+    numvector<numvector<double, 5>, 5> getL(const numvector<double, 5>& sol, const Point& n) const;
 
     //- Right eigenvectors
     std::pair<numvector<numvector<double, 5>, 5>, numvector<numvector<double, 5>, 5>> getR(const numvector<double, 5>& sol) const;
+    numvector<numvector<double, 5>, 5> getR(const numvector<double, 5>& sol, const Point& n) const;
 
 };// end Problem
 

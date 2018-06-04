@@ -569,7 +569,7 @@ pair<numvector<double, 5 * nShapes>, numvector<double, 5 * nShapes>> Cell::getRi
 
     numvector<double, 5> solMean = reconstructSolution(getCellCenter());
 
-    pair<numvector<numvector<double, 5>, 5>, numvector<numvector<double, 5>, 5>> L = problem.getR(solMean);
+    pair<numvector<numvector<double, 5>, 5>, numvector<numvector<double, 5>, 5>> L = problem.getL(solMean);
 
     for (int iSol = 0; iSol < 5; ++iSol )
         for (int j = 0; j < nShapes; ++j )
@@ -582,24 +582,59 @@ pair<numvector<double, 5 * nShapes>, numvector<double, 5 * nShapes>> Cell::getRi
     return res;
 }
 
+numvector<double, 5 * nShapes> Cell::getRiemannInvariants(const Point& n)
+{
+    numvector<double, 5 * nShapes> res (0);
+
+    numvector<double, 5> solMean = reconstructSolution(getCellCenter());
+
+    numvector<numvector<double, 5>, 5> L = problem.getL(solMean, n);
+
+    for (int iSol = 0; iSol < 5; ++iSol )
+        for (int j = 0; j < nShapes; ++j )
+            for (int jSol = 0; jSol < 5; ++jSol )
+                res[iSol * nShapes + j] +=  L[iSol][jSol] * problem.alpha[number][jSol * nShapes + j];
+
+    return res;
+}
+
 numvector<double, 5 * nShapes> Cell::reconstructCoefficients(const pair<numvector<double, 5 * nShapes>, numvector<double, 5 * nShapes>>& rI) const
 {
     pair<numvector<double, 5 * nShapes>, numvector<double, 5 * nShapes>> res (0,0);
 
     numvector<double, 5> solMean = reconstructSolution(getCellCenter());
 
-    pair<numvector<numvector<double, 5>, 5>, numvector<numvector<double, 5>, 5>> R = problem.getL(solMean);
+    pair<numvector<numvector<double, 5>, 5>, numvector<numvector<double, 5>, 5>> R = problem.getR(solMean);
 
     for (int iSol = 0; iSol < 5; ++iSol )
         for (int j = 0; j < nShapes; ++j )
             for (int jSol = 0; jSol < 5; ++jSol )
             {
-                res.first[iSol * nShapes + j] += rI.first[jSol * nShapes + j] * R.first[iSol][jSol];
-                res.second[iSol * nShapes + j] += rI.second[jSol * nShapes + j] * R.second[iSol][jSol];
+                res.first[iSol * nShapes + j] += rI.first[jSol * nShapes + j] * R.first[iSol][jSol] / offsetPhi[j];
+                res.second[iSol * nShapes + j] += rI.second[jSol * nShapes + j] * R.second[iSol][jSol] / offsetPhi[j];
             }
 
-    numvector<double, 5 * nShapes> alpha = 0.5 * (res.first + res.second);
+    numvector<double, 5 * nShapes> alpha = 0.5 * (res.first + res.second) * (1.0 / area);
 
-    return correctNonOrtho(alpha);
+    return alpha;//correctNonOrtho(alpha);
+
+    //return 0.5 * ()
+}
+
+numvector<double, 5 * nShapes> Cell::reconstructCoefficients(const numvector<double, 5 * nShapes>& rI, const Point& n) const
+{
+    numvector<double, 5 * nShapes> res (0);
+
+    numvector<double, 5> solMean = reconstructSolution(getCellCenter());
+
+    numvector<numvector<double, 5>, 5> R = problem.getR(solMean, n);
+
+    for (int iSol = 0; iSol < 5; ++iSol )
+        for (int j = 0; j < nShapes; ++j )
+            for (int jSol = 0; jSol < 5; ++jSol )
+                res[iSol * nShapes + j] += rI[jSol * nShapes + j] * R[iSol][jSol] / offsetPhi[j];
+
+    return res;
+
 }
 

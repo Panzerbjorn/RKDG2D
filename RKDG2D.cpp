@@ -38,15 +38,15 @@ int main(int argc, char** argv)
 {    
     // Problem
 
-    string caseName = "forwardStep";
+    string caseName = "SodX";
 
     // Time parameters
 
     double tStart = 0.0;
-    double tEnd = 4.0;
+    double tEnd = 0.002;
     bool defCoeffs = false;
 
-    double initDeltaT = 1.25e-4;
+    double initDeltaT = 1e-3;
 
     bool isDynamicTimeStep = false;
     double Co = 0.1;
@@ -54,7 +54,7 @@ int main(int argc, char** argv)
     double maxTauGrowth = 1.2;
 
 
-    int freqWrite = 80;
+    int freqWrite = 1;
 
 
     // ---------------
@@ -84,7 +84,7 @@ int main(int argc, char** argv)
     IndicatorKXRCF indicator(mesh, problem);
 
     // Initialize limiter
-    LimiterWENOS limiter(indicator, problem);
+    LimiterRiemannWENOS limiter(indicator, problem);
 
     // ---------------
 
@@ -117,7 +117,7 @@ int main(int argc, char** argv)
     double tau = initDeltaT;
 
     vector<numvector<double, 5*nShapes>> lhs = solver.alphaPrev; // coeffs
-
+    vector<numvector<double, 5*nShapes>> lhsPrev = lhs;
 
     // run Runge --- Kutta 2 TVD
 
@@ -191,28 +191,57 @@ int main(int argc, char** argv)
            solver.write("alphaCoeffs/" + to_string(t),lhs);
        }
 
-       // check energy conservation
+       // check total energy conservation
 
        double totalEnergy = 0.0;
 
        for (const shared_ptr<Cell> cell : mesh.cells)
        {
-           function<double(const Point&)> en = [&](const Point& x)
+           function<double(const Point&)> eTot = [&](const Point& x)
            {
                return cell->reconstructSolution(x,4);
            };
 
-           totalEnergy += cell->integrate(en);
+           totalEnergy += cell->integrate(eTot);
        }
+
+       // check local internal energy balance
+
+//       double internalEnergyB = 0.0;
+
+//       {
+//           const shared_ptr<Cell> cell = mesh.cells[50];
+
+//           function<double(const Point&)> eIn = [&](const Point& x)
+//           {
+//               numvector<double, 5> solPrev  = cell->reconstructSolution(x, lhsPrev[50]);
+//               numvector<double, 5> solNext  = cell->reconstructSolution(x, lhs[50]);
+
+//               double eInPrev = solPrev[4] - 0.5 * (sqr(solPrev[1]) + sqr(solPrev[2]) / solPrev[0]);
+//               double eInNext = solNext[4] - 0.5 * (sqr(solNext[1]) + sqr(solNext[2]) / solNext[0]);
+
+//               double ux = lhsPrev[cell->number][1 * nShapes + 1] * cell->offsetPhi[1] / solPrev[0];
+//               double vy = lhsPrev[cell->number][2 * nShapes + 2] * cell->offsetPhi[2] / solPrev[0];
+//               double pDivU = problem.getPressure(solPrev) * (ux + vy);
+
+//               return eInNext - eInPrev - pDivU;
+//           };
+
+//          internalEnergyB = cell->integrate(eIn);
+//       }
+
+
 
        cout.precision(16);
        cout << "total energy = " << totalEnergy << endl;
+       //cout << "internal energy balance = " << internalEnergyB << endl;
 
 
 
 
 
        solver.alphaPrev = solver.alphaNext;
+       lhsPrev = lhs;
 
        iT++;
 

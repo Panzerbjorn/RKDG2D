@@ -74,15 +74,22 @@ void Problem::setInitialConditions(string caseName)
     }
     else if (caseName == "forwardStep")
     {
-        initRho = [](const Point& r) { return 0.5; };
-        initP   = [&](const Point& r) { return 0.125 * (cpcv - 1.0);  };
-        initU   = [](const Point& r) { return 0.0; };
+        initRho = [](const Point& r) { return 1.0; };
+        initP   = [&](const Point& r) { return 1.0 / cpcv;  };
+        initU   = [](const Point& r) { return 3.0; };
         initV   = [](const Point& r) { return 0.0; };
     }
     else if (caseName == "acousticPulse")
     {
         initRho = [](const Point& r) { return 1.0 + 1e-6*exp( - 40.0*sqr(r.x() )- 40.0*sqr(r.y() )); };
         initP   = [&](const Point& r) { return initRho(r) / cpcv;  };
+        initU   = [](const Point& r) { return 0.0; };
+        initV   = [](const Point& r) { return 0.0; };
+    }
+    else if (caseName == "Monopole")
+    {
+        initRho = [](const Point& r) { return 1.0; };
+        initP   = [&](const Point& r) { return 1.0 / cpcv;  };
         initU   = [](const Point& r) { return 0.0; };
         initV   = [](const Point& r) { return 0.0; };
     }
@@ -94,7 +101,7 @@ void Problem::setInitialConditions(string caseName)
 
     init = [=](const Point& r)
     {
-        return numvector<double, 5> { initRho(r), initU(r), initV(r), 0.0, initP(r) / (cpcv - 1.0) };
+        return numvector<double, 5> { initRho(r), initU(r), initV(r), 0.0, initP(r) / (cpcv - 1.0) + 0.5 * initRho(r) * (sqr(initU(r)) + sqr(initV(r)))};
     };
 }
 
@@ -126,6 +133,18 @@ void Problem::setBoundaryConditions(string caseName, const std::vector<Patch>& p
 
         bc = {bConst, bOpen, bSlip, bSlip};
     }
+    else if (caseName == "Monopole")
+    {
+        shared_ptr<BoundaryOpen> bOpen = make_shared<BoundaryOpen>();
+        shared_ptr<BoundarySlip> bSlip = make_shared<BoundarySlip>();
+        shared_ptr<BoundarySine> bSine = \
+                make_shared<BoundarySine>(1e-6,5,time,*this,init(0));
+        shared_ptr<BoundaryConstant> bConst = \
+                make_shared<BoundaryConstant>(init(0));
+
+
+        bc = {bSine, bConst};
+    }
     else
     {
         cout << "Problem " << caseName << " not found\n";
@@ -151,12 +170,12 @@ void Problem::setAlpha(const std::vector<numvector<double, 5 * nShapes> >& a)
 double Problem::getPressure(const numvector<double, 5>& sol) const
 {
     // uncomment for LEE
-//    numvector<double,5> initfun = init(Point({0.0,0.0}));
+    numvector<double,5> initfun = init(Point({0.0,0.0}));
 
-//    double rho0 = initfun[0];
-//    double p0 = initfun[4] * (cpcv - 1);
+    double rho0 = initfun[0];
+    double p0 = initfun[4] * (cpcv - 1);
 
-//    return p0 * pow(sol[0] / rho0 , cpcv);
+    return p0 * pow(sol[0] / rho0 , cpcv);
 
     double magRhoU2 = sqr(sol[1]) + sqr(sol[2]) + sqr(sol[3]);
 
@@ -299,7 +318,7 @@ pair<numvector<numvector<double, 5>, 5>, numvector<numvector<double, 5>, 5>> Pro
 
     res.first =
     {
-        // Lx //again -v, -1
+        // Lx
         { 0.5 * (B2 + u/cS), -0.5 * (B1 * u + 1.0/cS), -0.5 * B1 * v,  0.0, 0.5 * B1},
         {                -v,                      0.0,           1.0,  0.0,      0.0},
         {               0.0,                      0.0,           0.0,  1.0,      0.0},
@@ -311,7 +330,7 @@ pair<numvector<numvector<double, 5>, 5>, numvector<numvector<double, 5>, 5>> Pro
     {
         // Ly
         { 0.5 * (B2 + v/cS), -0.5 * (B1 * u), -0.5 * (B1 * v + 1.0/cS),  0.0, 0.5 * B1},
-        {                -u,             1.0,                      0.0,  0.0,      0.0},
+        {                 u,            -1.0,                      0.0,  0.0,      0.0},
         {               0.0,             0.0,                      0.0,  1.0,      0.0},
         {          1.0 - B2,          B1 * u,                   B1 * v,  0.0,      -B1},
         { 0.5 * (B2 - v/cS), -0.5 * (B1 * u), -0.5 * (B1 * v - 1.0/cS),  0.0, 0.5 * B1}
@@ -336,7 +355,7 @@ pair<numvector<numvector<double, 5>, 5>, numvector<numvector<double, 5>, 5>> Pro
 
     res.first =
     {
-        // Rx  // OK, but -1 and -v???
+        // Rx
         {        1.0,  0.0,  0.0,   1.0,        1.0 },
         {     u - cS,  0.0,  0.0,     u,     u + cS },
         {          v,  1.0,  0.0,     v,          v },
@@ -348,14 +367,65 @@ pair<numvector<numvector<double, 5>, 5>, numvector<numvector<double, 5>, 5>> Pro
     {
         // Ry
         {        1.0,  0.0,  0.0,   1.0,        1.0 },
-        {          u,  1.0,  0.0,     u,          u },
+        {          u, -1.0,  0.0,     u,          u },
         {     v - cS,  0.0,  0.0,     v,     v + cS },
         {        0.0,  0.0,  1.0,   0.0,        0.0 },
-        { H - cS * v,    u,  0.0, magU2, H + cS * v },
+        { H - cS * v,   -u,  0.0, magU2, H + cS * v },
     };
 
     return res;
 }
+
+numvector<numvector<double, 5>, 5> Problem::getL(const numvector<double, 5>& sol, const Point& n) const
+{
+    double cS = c(sol);
+    double rho = sol[0];
+    double u = sol[1] / rho;
+    double v = sol[2] / rho;
+
+    double B1 = (cpcv - 1.0) / sqr(cS);
+    double B2 = 0.5 * B1 * (sqr(u) + sqr(v));
+
+    numvector<numvector<double, 5>, 5> res;
+
+    res =
+    {
+        { 0.5 * (B2 + (u*n.x() + v*n.y())/cS), -0.5 * (B1 * u + n.x()/cS), -0.5 * (B1 * v + n.y()/cS),  0.0, 0.5 * B1},
+        {                   u*n.y() - v*n.x(),                     -n.y(),                      n.x(),  0.0,      0.0},
+        {                            1.0 - B2,                     B1 * u,                     B1 * v,  0.0,      -B1},
+        {                                 0.0,                        0.0,                        0.0,  1.0,      0.0},
+        { 0.5 * (B2 - (u*n.x() + v*n.y())/cS), -0.5 * (B1 * u - n.x()/cS), -0.5 * (B1 * v - n.y()/cS),  0.0, 0.5 * B1}
+    };
+
+    return res;
+}
+
+
+numvector<numvector<double, 5>, 5> Problem::getR(const numvector<double, 5>& sol, const Point& n) const
+{
+    double cS = c(sol);
+    double rho = sol[0];
+    double u = sol[1] / rho;
+    double v = sol[2] / rho;
+    double p = getPressure(sol);
+
+    double H = (sol[4] + p) / rho;
+    double magU2 = 0.5 * (sqr(u) + sqr(v));
+
+    numvector<numvector<double, 5>, 5> res;
+
+    res =
+    {
+        {                          1.0,                0.0,   1.0,  0.0,                          1.0 },
+        {               u - cS * n.x(),             -n.y(),     u,  0.0,                 u + cS*n.x() },
+        {               v - cS * n.y(),              n.x(),     v,  0.0,                 v + cS*n.y() },
+        {                          0.0,                0.0,   0.0,  1.0,                          0.0 },
+        { H - cS * (u*n.x() + v*n.y()), -u*n.y() + v*n.x(), magU2,  0.0, H + cS * (u*n.x() + v*n.y()) }
+    };
+
+    return res;
+}
+
 
 
 

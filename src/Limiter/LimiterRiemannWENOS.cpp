@@ -131,11 +131,12 @@ void LimiterRiemannWENOS::limit(vector<numvector<double, 5 * nShapes>>& alpha)
 
     vector<int> troubledCells = indicator.checkDiscontinuities();
 
-    // p polynoms: first() is px, second() is py
+    // p polynoms
 
-    vector<pair<numvector<double, 5 * nShapes>, numvector<double, 5 * nShapes>>> p;
-    vector<numvector<double, 5 * nShapes>> px;
-    vector<numvector<double, 5 * nShapes>> py;
+    vector<numvector<double, 5 * nShapes>> p;
+    vector<numvector<double, 5 * nShapes>> pInv;
+    vector<numvector<double, 5 * nShapes>> pNew;
+    numvector<double, 5 * nShapes> res (0);
 
     // limit solution in troubled cells
 
@@ -150,27 +151,94 @@ void LimiterRiemannWENOS::limit(vector<numvector<double, 5 * nShapes>>& alpha)
 
         int nCells = cells.size();
 
-        // get px and py polynoms as Riemann invariants: first() is px, second() is py
+        // get p polynoms for each cell
 
         p.resize(nCells);
-        px.resize(nCells);
-        py.resize(nCells);
+        pInv.resize(nCells);
 
         for (int k = 0; k < nCells; ++k)
+            p[k] = alpha[cells[k]->number];
+
+        // get pNew polynoms using each edge normal
+        for (const shared_ptr<Edge> e : cells[0]->edges)
         {
-            p[k] = cells[k]->getRiemannInvariants();
-            px[k] = p[k].first;
-            py[k] = p[k].second;
+            // correct normal direction: outside related to troubled cell
+            Point n = (( *e->nodes[0] - cell->getCellCenter()) * e->n > 0.0) ? e->n : Point(-e->n);
+
+
+
+            for (size_t k = 0; k < cells.size(); ++k)
+                pInv[k] = cells[k]->getRiemannInvariants(n);
+
+            numvector <double, 5*nShapes> pLim = limitP(cells, pInv);
+
+            pNew.push_back( cell->reconstructCoefficients(pLim, n) );
         }
 
-        p[0].first = limitP(cells, px);
-        p[0].second = limitP(cells, py);
+        double sumArea = 0.0;
 
-        alpha[iCell] = cells[0]->reconstructCoefficients(p[0]);
+        for (int i = 1; i < nCells; ++i)
+            sumArea += cells[i]->getArea();
 
+        // construct limited solution
+        for (int i = 0; i < nCells-1; ++i)
+            res += pNew[i] * (cells[i+1]->getArea() / pNew.size() / sumArea);
+
+
+        alpha[cell->number] = res;
         problem.setAlpha(alpha);
 
     }
 
 }
+
+
+//void LimiterRiemannWENOS::limit(vector<numvector<double, 5 * nShapes>>& alpha)
+//{
+//    problem.setAlpha(alpha);
+
+//    vector<int> troubledCells = indicator.checkDiscontinuities();
+
+//    // p polynoms: first() is px, second() is py
+
+//    vector<pair<numvector<double, 5 * nShapes>, numvector<double, 5 * nShapes>>> p;
+//    vector<numvector<double, 5 * nShapes>> px;
+//    vector<numvector<double, 5 * nShapes>> py;
+
+//    // limit solution in troubled cells
+
+//    for (int iCell : troubledCells)
+//    {
+//        shared_ptr<Cell> cell = indicator.mesh.cells[iCell];
+
+//        // construct list of cells: cell + neighbours
+
+//        vector<shared_ptr<Cell>> cells = { cell };
+//        cells.insert(cells.end(), cell->neibCells.begin(), cell->neibCells.end());
+
+//        int nCells = cells.size();
+
+//        // get px and py polynoms as Riemann invariants: first() is px, second() is py
+
+//        p.resize(nCells);
+//        px.resize(nCells);
+//        py.resize(nCells);
+
+//        for (int k = 0; k < nCells; ++k)
+//        {
+//            p[k] = cells[k]->getRiemannInvariants();
+//            px[k] = p[k].first;
+//            py[k] = p[k].second;
+//        }
+
+//        p[0].first = limitP(cells, px);
+//        p[0].second = limitP(cells, py);
+
+//        alpha[iCell] = cells[0]->reconstructCoefficients(p[0]);
+
+//        problem.setAlpha(alpha);
+
+//    }
+
+//}
 
