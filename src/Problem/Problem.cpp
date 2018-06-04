@@ -38,6 +38,8 @@ void Problem::setInitialConditions(string caseName)
 
     if (caseName == "SodX")
     {
+        cpcv = 1.4;
+
         initRho = [](const Point& r) { return (r.x() < 0.0) ? 1.0 : 0.125; };
         initP   = [](const Point& r) { return (r.x() < 0.0) ? 1.0 : 0.1;  };
         initU   = [](const Point& r) { return (r.x() < 0.0) ? 0.0 : 0.0; };
@@ -45,6 +47,8 @@ void Problem::setInitialConditions(string caseName)
     }
     else if (caseName == "SodY")
     {
+        cpcv = 1.4;
+
         initRho = [](const Point& r) { return (r.x() < 0) ? 1.0 : 0.125; };
         initP   = [](const Point& r) { return (r.x() < 0) ? 1.0 : 0.1;  };
         initV   = [](const Point& r) { return (r.x() < 0) ? 0.75 : 0.0; };
@@ -52,21 +56,35 @@ void Problem::setInitialConditions(string caseName)
     }
     else if (caseName == "SodDiag")
     {
+        cpcv = 1.4;
+
         initRho = [](const Point& r) { return ((r.x() + r.y()) < 1.0) ? 1.0 : 0.125; };
         initP   = [](const Point& r) { return ((r.x() + r.y()) < 1.0) ? 1.0 : 0.1;  };
         initV   = [](const Point& r) { return 0.0; };
         initU   = [](const Point& r) { return 0.0; };
     }
-
     else if (caseName == "Woodward")
     {
+        cpcv = 1.4;
+
         initRho = [](const Point& r) { return 1.0; };
         initP   = [](const Point& r) { return (r.x() <= -0.4) ? 1000.0 : ((r.x() >= 0.4) ? 100.0 : 0.01);  };
         initV   = [](const Point& r) { return 0.0; };
         initU   = [](const Point& r) { return 0.0; };
     }
+    else if (caseName == "Noh")
+    {
+        cpcv = 5.0/3.0;
+
+        initRho = [](const Point& r) { return 1.0; };
+        initP   = [](const Point& r) { return 1e-6;  };
+        initU   = [](const Point& r) { return (r.x() < 0) ? 1.0 : -1.0; };
+        initV   = [](const Point& r) { return 0.0; };
+    }
     else if (caseName == "123")
     {
+        cpcv = 1.4;
+
         initRho = [](const Point& r) { return 1.0; };
         initP   = [](const Point& r) { return 0.4;  };
         initU   = [](const Point& r) { return (r.x() < 0) ? -2.0 : 2.0; };
@@ -74,6 +92,8 @@ void Problem::setInitialConditions(string caseName)
     }
     else if (caseName == "forwardStep")
     {
+        cpcv = 1.4;
+
         initRho = [](const Point& r) { return 1.0; };
         initP   = [&](const Point& r) { return 1.0 / cpcv;  };
         initU   = [](const Point& r) { return 3.0; };
@@ -81,6 +101,8 @@ void Problem::setInitialConditions(string caseName)
     }
     else if (caseName == "acousticPulse")
     {
+        cpcv = 1.4;
+
         initRho = [](const Point& r) { return 1.0 + 1e-6*exp( - 40.0*sqr(r.x() )- 40.0*sqr(r.y() )); };
         initP   = [&](const Point& r) { return initRho(r) / cpcv;  };
         initU   = [](const Point& r) { return 0.0; };
@@ -95,6 +117,8 @@ void Problem::setInitialConditions(string caseName)
     }
     else
     {
+        cpcv = 1.4;
+
         cout << "Problem " << caseName << " not found\n";
         exit(0);
     }
@@ -115,13 +139,16 @@ void Problem::setBoundaryConditions(string caseName, const std::vector<Patch>& p
         caseName == "SodY" || \
         caseName == "SodDiag" || \
         caseName == "Woodward" || \
+        caseName == "Noh" || \
         caseName == "123" || \
         caseName == "acousticPulse")
     {
         shared_ptr<BoundaryOpen> bOpen = make_shared<BoundaryOpen>();
         shared_ptr<BoundarySlip> bSlip = make_shared<BoundarySlip>();
 
-        bc = {bSlip, bSlip, bSlip, bSlip};
+        bc = {bOpen, bOpen};
+        //bc = {bSlip, bSlip};
+        //bc = {bSlip, bSlip, bSlip, bSlip};
         //bc = {bOpen, bOpen, bOpen, bOpen};
     }
     else if (caseName == "forwardStep")

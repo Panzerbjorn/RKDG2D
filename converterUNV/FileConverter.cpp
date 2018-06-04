@@ -478,7 +478,7 @@ void FileConverter::exportRKDG()
     int nEdgesBound = 0;
 
     for (int i = 0; i < patchNames.size(); ++i)
-        nEdgesBound += patchEdgeGroups.size();
+        nEdgesBound += patchEdgeGroups[i].size();
 
     writer << "$Edges\n";
 

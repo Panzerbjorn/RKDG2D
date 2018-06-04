@@ -38,12 +38,15 @@ int main(int argc, char** argv)
 {    
     // Problem
 
+
     string caseName = "SodX";
 
     // Time parameters
 
     double tStart = 0.0;
-    double tEnd = 0.002;
+
+    double tEnd = 0.2;
+
     bool defCoeffs = false;
 
     double initDeltaT = 1e-3;
@@ -72,7 +75,7 @@ int main(int argc, char** argv)
     problem.setBoundaryConditions(caseName, mesh.patches);
 
     // Initialize flux
-    FluxHLLC numFlux(problem);
+    FluxHLL numFlux(problem);
 
     // Initialize solver
     Solver solver(mesh, problem, numFlux);
@@ -84,7 +87,7 @@ int main(int argc, char** argv)
     IndicatorKXRCF indicator(mesh, problem);
 
     // Initialize limiter
-    LimiterRiemannWENOS limiter(indicator, problem);
+    LimiterWENOS limiter(indicator, problem);
 
     // ---------------
 
@@ -105,7 +108,7 @@ int main(int argc, char** argv)
     else
     {
         solver.setInitialConditions();
-        //limiter.limit(solver.alphaPrev);
+        limiter.limit(solver.alphaPrev);
         solver.writeSolutionVTK("alphaCoeffs/sol_" + to_string(tStart));
     }
 
@@ -139,6 +142,7 @@ int main(int argc, char** argv)
 
        time.updateTime(t);
 
+       cout.precision(6);
        cout << "---------\nt = " << t << endl;
        cout << "tau = " << tau << endl;
 
@@ -197,12 +201,13 @@ int main(int argc, char** argv)
 
        for (const shared_ptr<Cell> cell : mesh.cells)
        {
-           function<double(const Point&)> eTot = [&](const Point& x)
+
+           function<double(const Point&)> eTotal = [&](const Point& x)
            {
                return cell->reconstructSolution(x,4);
            };
 
-           totalEnergy += cell->integrate(eTot);
+           totalEnergy += cell->integrate(eTotal);
        }
 
        // check local internal energy balance
@@ -235,7 +240,6 @@ int main(int argc, char** argv)
        cout.precision(16);
        cout << "total energy = " << totalEnergy << endl;
        //cout << "internal energy balance = " << internalEnergyB << endl;
-
 
 
 

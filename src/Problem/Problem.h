@@ -24,7 +24,7 @@ class Problem
 public:
 
     //- Heat capacity ratio
-    const double cpcv = 1.4;
+    double cpcv;
 
     //- Function for initial conditions
     std::function<numvector<double, 5>(const Point& r)> init;

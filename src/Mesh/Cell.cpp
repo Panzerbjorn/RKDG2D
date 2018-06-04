@@ -238,13 +238,13 @@ void Cell::setBasisFunctions()
     phi.reserve(nShapes);
     gradPhi.reserve(nShapes);
 
-    phi.emplace_back([&](const Point& r){ return 1.0 / sqrt(area); });
-    phi.emplace_back([&](const Point& r){ return (r.x() - center.x()) * 2.0 * sqrt(3) / area; });
-    phi.emplace_back([&](const Point& r){ return (r.y() - center.y()) * 2.0 * sqrt(3) / area; });
+    phi.emplace_back([&](const Point& r){ return offsetPhi[0]; });
+    phi.emplace_back([&](const Point& r){ return (r.x() - center.x()) * offsetPhi[1]; });
+    phi.emplace_back([&](const Point& r){ return (r.y() - center.y()) * offsetPhi[2]; });
 
-    gradPhi.emplace_back([&](const Point& r)->Point { return Point({ 0.0    , 0.0 }); });
-    gradPhi.emplace_back([&](const Point& r)->Point { return Point({ 2.0 * sqrt(3) / area, 0.0 }); });
-    gradPhi.emplace_back([&](const Point& r)->Point { return Point({ 0.0    , 2.0 * sqrt(3) / area }); });
+    gradPhi.emplace_back([&](const Point& r)->Point { return Point({ 0.0         , 0.0 }); });
+    gradPhi.emplace_back([&](const Point& r)->Point { return Point({ offsetPhi[1], 0.0 }); });
+    gradPhi.emplace_back([&](const Point& r)->Point { return Point({ 0.0         , offsetPhi[2] }); });
 
     if (nShapes == 6)
     {
@@ -535,6 +535,7 @@ numvector<double, 5 * nShapes> Cell::correctNonOrtho(const numvector<double, 5 *
                 / (gramian[2][2] * gramian[1][1] - gramian[1][2] * gramian[2][1]);
         solution[1] = (rhs[iSol*nShapes + 1] - solution[2] * gramian[1][2]) \
                 / (gramian[1][1]);
+
         //set solution to appropriate positions
         for (int i = 0; i < nShapes; ++i)
             alphaCorr[i + iSol*nShapes] = solution[i];
