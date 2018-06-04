@@ -197,12 +197,14 @@ void Problem::setAlpha(const std::vector<numvector<double, 5 * nShapes> >& a)
 double Problem::getPressure(const numvector<double, 5>& sol) const
 {
     // uncomment for LEE
-    numvector<double,5> initfun = init(Point({0.0,0.0}));
+//    numvector<double,5> initfun = init(Point({0.0,0.0}));
 
-    double rho0 = initfun[0];
-    double p0 = initfun[4] * (cpcv - 1);
+//    double rho0 = initfun[0];
+//    double p0 = initfun[4] * (cpcv - 1);
 
-    return p0 * pow(sol[0] / rho0 , cpcv);
+//    return p0 * pow(sol[0] / rho0 , cpcv);
+
+    // end uncomment for LEE
 
     double magRhoU2 = sqr(sol[1]) + sqr(sol[2]) + sqr(sol[3]);
 

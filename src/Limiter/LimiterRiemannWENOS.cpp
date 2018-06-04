@@ -66,7 +66,7 @@ numvector<double, 5 * nShapes> limitP(const vector<shared_ptr<Cell>>& cells, con
     for (size_t k = 0; k < nCells; ++k)
         for (int j = 0; j < 5; ++j)
         {
-            beta[k][j] =  cells[0]->getArea() * cells[k]->getArea() * (sqr(p[k][j*nShapes + 1]) + sqr(p[k][j*nShapes + 2]));
+            beta[k][j] =  cells[0]->getArea() * (sqr(p[k][j*nShapes + 1]) + sqr(p[k][j*nShapes + 2]));
             wTilde[k][j] = gamma[k] * (1.0 / sqr(beta[k][j] + 1e-6));
         }
 
@@ -108,21 +108,33 @@ numvector<double, 5 * nShapes> limitP(const vector<shared_ptr<Cell>>& cells, con
 
     // project limited solution onto cell basis
 
-    function<numvector<double, 5>(const Point& r)> foo = [=](const Point& r) \
-    {
-        numvector<double, 5> sum (0.0);
+//    function<numvector<double, 5>(const Point& r)> foo = [=](const Point& r) \
+//    {
+//        numvector<double, 5> sum (0.0);
 
-        for (int i = 0; i < 5; ++i)
-            for (size_t k = 0; k < nCells; ++k)
-                sum[i] += w[k][i] * (p[k][i*nShapes] + \
-                                     p[k][i*nShapes + 1] * (r.x() - cells[k]->getCellCenter().x()) + \
-                                     p[k][i*nShapes + 2] * (r.y() - cells[k]->getCellCenter().y()));
+//        for (int i = 0; i < 5; ++i)
+//            for (size_t k = 0; k < nCells; ++k)
+//                sum[i] += w[k][i] * (p[k][i*nShapes] + \
+//                                     p[k][i*nShapes + 1] * (r.x() - cells[k]->getCellCenter().x()) + \
+//                                     p[k][i*nShapes + 2] * (r.y() - cells[k]->getCellCenter().y()));
 
 
-        return sum;
-    };
+//        return sum;
+//    };
 
-    return cells[0]->projection(foo);
+//    return cells[0]->projection(foo);
+
+    numvector<double, 5*nShapes> res (0.0);
+
+    for (int i = 0; i < 5; ++i)
+        for (size_t k = 0; k < nCells; ++k)
+        {
+            res[i*nShapes]     += w[k][i] * p[k][i*nShapes];
+            res[i*nShapes + 1] += w[k][i] * p[k][i*nShapes + 1];
+            res[i*nShapes + 2] += w[k][i] * p[k][i*nShapes + 2];
+        }
+
+    return res;
 }
 
 void LimiterRiemannWENOS::limit(vector<numvector<double, 5 * nShapes>>& alpha)
@@ -135,8 +147,6 @@ void LimiterRiemannWENOS::limit(vector<numvector<double, 5 * nShapes>>& alpha)
 
     vector<numvector<double, 5 * nShapes>> p;
     vector<numvector<double, 5 * nShapes>> pInv;
-    vector<numvector<double, 5 * nShapes>> pNew;
-    numvector<double, 5 * nShapes> res (0);
 
     // limit solution in troubled cells
 
@@ -155,6 +165,7 @@ void LimiterRiemannWENOS::limit(vector<numvector<double, 5 * nShapes>>& alpha)
 
         p.resize(nCells);
         pInv.resize(nCells);
+        vector<numvector<double, 5 * nShapes>> pNew;
 
         for (int k = 0; k < nCells; ++k)
             p[k] = alpha[cells[k]->number];
@@ -162,17 +173,21 @@ void LimiterRiemannWENOS::limit(vector<numvector<double, 5 * nShapes>>& alpha)
         // get pNew polynoms using each edge normal
         for (const shared_ptr<Edge> e : cells[0]->edges)
         {
-            // correct normal direction: outside related to troubled cell
-            Point n = (( *e->nodes[0] - cell->getCellCenter()) * e->n > 0.0) ? e->n : Point(-e->n);
+            if (e->neibCells.size() == 2)
+            {
+                // correct normal direction: outside related to troubled cell
+                Point n = (( *e->nodes[0] - cell->getCellCenter()) * e->n > 0.0) ? e->n : Point(-e->n);
 
+                // get Riemann invariants along this direction
+                for (size_t k = 0; k < cells.size(); ++k)
+                    pInv[k] = cells[k]->getRiemannInvariants(n);
 
+                // limit Riemann invariants
+                numvector <double, 5*nShapes> pLim = limitP(cells, pInv);
 
-            for (size_t k = 0; k < cells.size(); ++k)
-                pInv[k] = cells[k]->getRiemannInvariants(n);
-
-            numvector <double, 5*nShapes> pLim = limitP(cells, pInv);
-
-            pNew.push_back( cell->reconstructCoefficients(pLim, n) );
+                // project limited solution to conservative variables
+                pNew.push_back( cell->reconstructCoefficients(pLim, n) );
+            }
         }
 
         double sumArea = 0.0;
@@ -181,64 +196,30 @@ void LimiterRiemannWENOS::limit(vector<numvector<double, 5 * nShapes>>& alpha)
             sumArea += cells[i]->getArea();
 
         // construct limited solution
+        numvector<double, 5 * nShapes> res (0.0);
         for (int i = 0; i < nCells-1; ++i)
-            res += pNew[i] * (cells[i+1]->getArea() / pNew.size() / sumArea);
+            res += pNew[i] * (cells[i+1]->getArea() / sumArea);
 
 
-        alpha[cell->number] = res;
+        function<numvector<double, 5>(const Point& r)> foo = [=](const Point& r) \
+        {
+            numvector<double, 5> sum (0.0);
+
+            for (int i = 0; i < 5; ++i)
+                sum[i] += (res[i*nShapes] + \
+                           res[i*nShapes + 1] * (r.x() - cell->getCellCenter().x()) + \
+                           res[i*nShapes + 2] * (r.y() - cell->getCellCenter().y()));
+
+
+            return sum;
+        };
+
+        numvector<double, 5*nShapes> newAlpha = cell->projection(foo);
+        alpha[cell->number] = newAlpha;
         problem.setAlpha(alpha);
 
     }
 
 }
 
-
-//void LimiterRiemannWENOS::limit(vector<numvector<double, 5 * nShapes>>& alpha)
-//{
-//    problem.setAlpha(alpha);
-
-//    vector<int> troubledCells = indicator.checkDiscontinuities();
-
-//    // p polynoms: first() is px, second() is py
-
-//    vector<pair<numvector<double, 5 * nShapes>, numvector<double, 5 * nShapes>>> p;
-//    vector<numvector<double, 5 * nShapes>> px;
-//    vector<numvector<double, 5 * nShapes>> py;
-
-//    // limit solution in troubled cells
-
-//    for (int iCell : troubledCells)
-//    {
-//        shared_ptr<Cell> cell = indicator.mesh.cells[iCell];
-
-//        // construct list of cells: cell + neighbours
-
-//        vector<shared_ptr<Cell>> cells = { cell };
-//        cells.insert(cells.end(), cell->neibCells.begin(), cell->neibCells.end());
-
-//        int nCells = cells.size();
-
-//        // get px and py polynoms as Riemann invariants: first() is px, second() is py
-
-//        p.resize(nCells);
-//        px.resize(nCells);
-//        py.resize(nCells);
-
-//        for (int k = 0; k < nCells; ++k)
-//        {
-//            p[k] = cells[k]->getRiemannInvariants();
-//            px[k] = p[k].first;
-//            py[k] = p[k].second;
-//        }
-
-//        p[0].first = limitP(cells, px);
-//        p[0].second = limitP(cells, py);
-
-//        alpha[iCell] = cells[0]->reconstructCoefficients(p[0]);
-
-//        problem.setAlpha(alpha);
-
-//    }
-
-//}
 

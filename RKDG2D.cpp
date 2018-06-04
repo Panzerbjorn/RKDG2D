@@ -45,7 +45,7 @@ int main(int argc, char** argv)
 
     double tStart = 0.0;
 
-    double tEnd = 0.2;
+    double tEnd = 0.002;
 
     bool defCoeffs = false;
 
@@ -75,7 +75,7 @@ int main(int argc, char** argv)
     problem.setBoundaryConditions(caseName, mesh.patches);
 
     // Initialize flux
-    FluxHLL numFlux(problem);
+    FluxHLLC numFlux(problem);
 
     // Initialize solver
     Solver solver(mesh, problem, numFlux);
@@ -87,7 +87,7 @@ int main(int argc, char** argv)
     IndicatorKXRCF indicator(mesh, problem);
 
     // Initialize limiter
-    LimiterWENOS limiter(indicator, problem);
+    LimiterRiemannWENOS limiter(indicator, problem);
 
     // ---------------
 
@@ -152,11 +152,25 @@ int main(int argc, char** argv)
        lhs = solver.correctNonOrtho(solver.alphaNext);
 
        limiter.limit(lhs);
-       // get limited "lhs"
        solver.alphaNext = solver.correctPrevIter(lhs);
 
 //       solver.writeSolutionVTK("alphaCoeffs/sol_" + to_string(t)+"RK1");
        //solver.write("alphaCoeffs/" + to_string(t)+"RK1",lhs);
+
+       double totalEnergy = 0.0;
+
+       for (const shared_ptr<Cell> cell : mesh.cells)
+       {
+
+           function<double(const Point&)> eTotal = [&](const Point& x)
+           {
+               return cell->reconstructSolution(x,4);
+           };
+
+           totalEnergy += cell->integrate(eTotal);
+       }
+       cout.precision(16);
+       cout << "total energy = " << totalEnergy << endl;
 
 
        k2 = solver.assembleRHS(lhs);
@@ -165,14 +179,23 @@ int main(int argc, char** argv)
        solver.alphaNext = solver.alphaPrev*0.75 + solver.alphaNext*0.25 + k2*0.25*tau;
        lhs = solver.correctNonOrtho(solver.alphaNext);
 
-
-       //cout << "before limiting" << solver.alphaNext[49] << endl;
-
-       //solver.write("alphaCoeffs/" + to_string(t) + "blRK2",lhs);
-
        limiter.limit(lhs);
-       // get limited "lhs"
        solver.alphaNext = solver.correctPrevIter(lhs);
+
+       totalEnergy = 0.0;
+
+       for (const shared_ptr<Cell> cell : mesh.cells)
+       {
+
+           function<double(const Point&)> eTotal = [&](const Point& x)
+           {
+               return cell->reconstructSolution(x,4);
+           };
+
+           totalEnergy += cell->integrate(eTotal);
+       }
+       cout.precision(16);
+       cout << "total energy = " << totalEnergy << endl;
 
        k3 = solver.assembleRHS(lhs);
        double i13 = 0.3333333333333333;
@@ -181,8 +204,22 @@ int main(int argc, char** argv)
        lhs = solver.correctNonOrtho(solver.alphaNext);
 
        limiter.limit(lhs);
-       // get limited "lhs"
        solver.alphaNext = solver.correctPrevIter(lhs);
+
+       totalEnergy = 0.0;
+
+       for (const shared_ptr<Cell> cell : mesh.cells)
+       {
+
+           function<double(const Point&)> eTotal = [&](const Point& x)
+           {
+               return cell->reconstructSolution(x,4);
+           };
+
+           totalEnergy += cell->integrate(eTotal);
+       }
+       cout.precision(16);
+       cout << "total energy = " << totalEnergy << endl;
 
        //cout << "after limiting" << solver.alphaNext[49] << endl;
 //       solver.write("alphaCoeffs/" + to_string(t)+"RK2bl",lhs);
@@ -197,18 +234,7 @@ int main(int argc, char** argv)
 
        // check total energy conservation
 
-       double totalEnergy = 0.0;
 
-       for (const shared_ptr<Cell> cell : mesh.cells)
-       {
-
-           function<double(const Point&)> eTotal = [&](const Point& x)
-           {
-               return cell->reconstructSolution(x,4);
-           };
-
-           totalEnergy += cell->integrate(eTotal);
-       }
 
        // check local internal energy balance
 
@@ -237,15 +263,14 @@ int main(int argc, char** argv)
 
 
 
-       cout.precision(16);
-       cout << "total energy = " << totalEnergy << endl;
+
        //cout << "internal energy balance = " << internalEnergyB << endl;
 
 
 
 
        solver.alphaPrev = solver.alphaNext;
-       lhsPrev = lhs;
+       //lhsPrev = lhs;
 
        iT++;
 

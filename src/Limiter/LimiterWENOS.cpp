@@ -4,6 +4,7 @@ using namespace std;
 
 void LimiterWENOS::limit(vector<numvector<double, 5 * nShapes>>& alpha)
 {
+    problem.setAlpha(alpha);
     // troubled cells
 
     vector<int> troubledCells;
@@ -11,9 +12,9 @@ void LimiterWENOS::limit(vector<numvector<double, 5 * nShapes>>& alpha)
     // linear weights
 
     vector<double> gamma;
-    double g = 0.1;
+    double g = 0.001;
 
-    int nIter = 2;
+    int nIter = 1;
 
     // smoothness indicators
 
@@ -36,6 +37,8 @@ void LimiterWENOS::limit(vector<numvector<double, 5 * nShapes>>& alpha)
 
     for (int iLim = 0; iLim < nIter; ++iLim)
     {
+        troubledCells = indicator.checkDiscontinuities();
+
         // limit solution in troubled cells
 
         for (int iCell : troubledCells)
@@ -68,9 +71,11 @@ void LimiterWENOS::limit(vector<numvector<double, 5 * nShapes>>& alpha)
                     for (int j = 0; j < nShapes; ++j)
                         p[k][i*nShapes + j] *= cells[k]->offsetPhi[j];
 
+
             for (size_t k = 0; k < nCells; ++k)
                 for (int i = 0; i < 5; ++i)
                     p[k][i*nShapes] += - uMean[k][i] + uMean[0][i];
+
 
 
             // get linear weights
@@ -91,7 +96,7 @@ void LimiterWENOS::limit(vector<numvector<double, 5 * nShapes>>& alpha)
             for (size_t k = 0; k < nCells; ++k)
                 for (int j = 0; j < 5; ++j)
                 {
-                    beta[k][j] =  cells[0]->getArea() * cells[k]->getArea() * (sqr(p[k][j*nShapes + 1]) + sqr(p[k][j*nShapes + 2]));
+                    beta[k][j] =  cells[0]->getArea() * (sqr(p[k][j*nShapes + 1]) + sqr(p[k][j*nShapes + 2]));
                     wTilde[k][j] = gamma[k] * (1.0 / sqr(beta[k][j] + 1e-6));
                 }
 
@@ -145,6 +150,7 @@ void LimiterWENOS::limit(vector<numvector<double, 5 * nShapes>>& alpha)
                                              p[k][i*nShapes + 1] * (r.x() - cells[k]->getCellCenter().x()) + \
                                              p[k][i*nShapes + 2] * (r.y() - cells[k]->getCellCenter().y()));
 
+
                 return sum;
             };
 
@@ -155,24 +161,24 @@ void LimiterWENOS::limit(vector<numvector<double, 5 * nShapes>>& alpha)
     }
 
 
-    for (const shared_ptr<Cell> cell : indicator.mesh.cells)
-        for (const shared_ptr<Point> node : cell->nodes)
-        {
-            numvector<double, 5> res = cell->reconstructSolution(node);
+//    for (const shared_ptr<Cell> cell : indicator.mesh.cells)
+//        for (const shared_ptr<Point> node : cell->nodes)
+//        {
+//            numvector<double, 5> res = cell->reconstructSolution(node);
 
-            if (res[0] < 0 || res[4] < 0 || problem.getPressure(res) < 0)
-            {
-                cout << "negative values after limitation in cell #" << cell->number << endl;
-                cout << "rho | rhoU | e = " << cell->reconstructSolution(node) << endl;
-                cout << "p = " << problem.getPressure(cell->reconstructSolution(node)) << endl;
+//            if (res[0] < 0 || res[4] < 0 || problem.getPressure(res) < 0)
+//            {
+//                cout << "negative values after limitation in cell #" << cell->number << endl;
+//                cout << "rho | rhoU | e = " << cell->reconstructSolution(node) << endl;
+//                cout << "p = " << problem.getPressure(cell->reconstructSolution(node)) << endl;
 
-                for (int j = 0; j < 5; ++j)
-                {
-                    alpha[cell->number][j*nShapes + 1] = 0.0;
-                    alpha[cell->number][j*nShapes + 2] = 0.0;
-                }
-            }
-        }
+//                for (int j = 0; j < 5; ++j)
+//                {
+//                    alpha[cell->number][j*nShapes + 1] = 0.0;
+//                    alpha[cell->number][j*nShapes + 2] = 0.0;
+//                }
+//            }
+//        }
 
     problem.setAlpha(alpha);
 
