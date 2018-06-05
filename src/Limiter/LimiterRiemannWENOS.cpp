@@ -76,7 +76,7 @@ numvector<double, 5 * nShapes> limitP(const vector<shared_ptr<Cell>>& cells, con
         for (size_t k = 0; k < nCells; ++k)
             wSum[j] += wTilde[k][j];
 
-//        //cout << wSum << endl;
+//        cout << wSum << endl;
 
     for (size_t k = 0; k < nCells; ++k)
         for (int j = 0; j < 5; ++j)
@@ -127,12 +127,16 @@ numvector<double, 5 * nShapes> limitP(const vector<shared_ptr<Cell>>& cells, con
     numvector<double, 5*nShapes> res (0.0);
 
     for (int i = 0; i < 5; ++i)
+    {
+        res[i*nShapes] =  p[0][i*nShapes];
+
         for (size_t k = 0; k < nCells; ++k)
         {
-            res[i*nShapes]     += w[k][i] * p[k][i*nShapes];
+            //res[i*nShapes]     += w[k][i] * p[k][i*nShapes];
             res[i*nShapes + 1] += w[k][i] * p[k][i*nShapes + 1];
             res[i*nShapes + 2] += w[k][i] * p[k][i*nShapes + 2];
         }
+    }
 
     return res;
 }
@@ -220,6 +224,26 @@ void LimiterRiemannWENOS::limit(vector<numvector<double, 5 * nShapes>>& alpha)
 
     }
 
+    for (const shared_ptr<Cell> cell : indicator.mesh.cells)
+        for (const shared_ptr<Point> node : cell->nodes)
+        {
+            numvector<double, 5> res = cell->reconstructSolution(node);
+
+            if (res[0] < 0 || res[4] < 0 || problem.getPressure(res) < 0)
+            {
+                cout << "negative values after limitation in cell #" << cell->number << endl;
+                cout << "rho | rhoU | e = " << cell->reconstructSolution(node) << endl;
+                cout << "p = " << problem.getPressure(cell->reconstructSolution(node)) << endl;
+
+                for (int j = 0; j < 5; ++j)
+                {
+                    alpha[cell->number][j*nShapes + 1] = 0.0;
+                    alpha[cell->number][j*nShapes + 2] = 0.0;
+                }
+            }
+        }
+
+    problem.setAlpha(alpha);
 }
 
 

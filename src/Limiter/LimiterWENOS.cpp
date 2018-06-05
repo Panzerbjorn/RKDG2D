@@ -12,7 +12,7 @@ void LimiterWENOS::limit(vector<numvector<double, 5 * nShapes>>& alpha)
     // linear weights
 
     vector<double> gamma;
-    double g = 0.001;
+    double g = 0.1;
 
     int nIter = 1;
 

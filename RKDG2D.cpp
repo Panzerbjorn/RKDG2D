@@ -39,17 +39,17 @@ int main(int argc, char** argv)
     // Problem
 
 
-    string caseName = "SodX";
+    string caseName = "forwardStep";
 
     // Time parameters
 
-    double tStart = 0.0;
+    double tStart = 0.13;
 
-    double tEnd = 0.002;
+    double tEnd = 4.0;
 
-    bool defCoeffs = false;
+    bool defCoeffs = true;
 
-    double initDeltaT = 1e-3;
+    double initDeltaT = 5e-4;
 
     bool isDynamicTimeStep = false;
     double Co = 0.1;
@@ -57,7 +57,7 @@ int main(int argc, char** argv)
     double maxTauGrowth = 1.2;
 
 
-    int freqWrite = 1;
+    int freqWrite = 20;
 
 
     // ---------------
@@ -157,20 +157,20 @@ int main(int argc, char** argv)
 //       solver.writeSolutionVTK("alphaCoeffs/sol_" + to_string(t)+"RK1");
        //solver.write("alphaCoeffs/" + to_string(t)+"RK1",lhs);
 
-       double totalEnergy = 0.0;
+//       double totalEnergy = 0.0;
 
-       for (const shared_ptr<Cell> cell : mesh.cells)
-       {
+//       for (const shared_ptr<Cell> cell : mesh.cells)
+//       {
 
-           function<double(const Point&)> eTotal = [&](const Point& x)
-           {
-               return cell->reconstructSolution(x,4);
-           };
+//           function<double(const Point&)> eTotal = [&](const Point& x)
+//           {
+//               return cell->reconstructSolution(x,4);
+//           };
 
-           totalEnergy += cell->integrate(eTotal);
-       }
-       cout.precision(16);
-       cout << "total energy = " << totalEnergy << endl;
+//           totalEnergy += cell->integrate(eTotal);
+//       }
+//       cout.precision(16);
+//       cout << "total energy = " << totalEnergy << endl;
 
 
        k2 = solver.assembleRHS(lhs);
@@ -182,20 +182,20 @@ int main(int argc, char** argv)
        limiter.limit(lhs);
        solver.alphaNext = solver.correctPrevIter(lhs);
 
-       totalEnergy = 0.0;
+//       totalEnergy = 0.0;
 
-       for (const shared_ptr<Cell> cell : mesh.cells)
-       {
+//       for (const shared_ptr<Cell> cell : mesh.cells)
+//       {
 
-           function<double(const Point&)> eTotal = [&](const Point& x)
-           {
-               return cell->reconstructSolution(x,4);
-           };
+//           function<double(const Point&)> eTotal = [&](const Point& x)
+//           {
+//               return cell->reconstructSolution(x,4);
+//           };
 
-           totalEnergy += cell->integrate(eTotal);
-       }
-       cout.precision(16);
-       cout << "total energy = " << totalEnergy << endl;
+//           totalEnergy += cell->integrate(eTotal);
+//       }
+//       cout.precision(16);
+//       cout << "total energy = " << totalEnergy << endl;
 
        k3 = solver.assembleRHS(lhs);
        double i13 = 0.3333333333333333;
@@ -206,7 +206,7 @@ int main(int argc, char** argv)
        limiter.limit(lhs);
        solver.alphaNext = solver.correctPrevIter(lhs);
 
-       totalEnergy = 0.0;
+       double totalEnergy = 0.0;
 
        for (const shared_ptr<Cell> cell : mesh.cells)
        {
