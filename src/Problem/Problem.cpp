@@ -108,8 +108,10 @@ void Problem::setInitialConditions(string caseName)
         initU   = [](const Point& r) { return 0.0; };
         initV   = [](const Point& r) { return 0.0; };
     }
-    else if (caseName == "Monopole")
+    else if (caseName == "monopole" || caseName == "dipole")
     {
+        cpcv = 1.4;
+
         initRho = [](const Point& r) { return 1.0; };
         initP   = [&](const Point& r) { return 1.0 / cpcv;  };
         initU   = [](const Point& r) { return 0.0; };
@@ -160,14 +162,26 @@ void Problem::setBoundaryConditions(string caseName, const std::vector<Patch>& p
 
         bc = {bConst, bOpen, bSlip, bSlip};
     }
-    else if (caseName == "Monopole")
+    else if (caseName == "monopole")
     {
-        shared_ptr<BoundaryOpen> bOpen = make_shared<BoundaryOpen>();
-        shared_ptr<BoundarySlip> bSlip = make_shared<BoundarySlip>();
+        //shared_ptr<BoundaryOpen> bOpen = make_shared<BoundaryOpen>();
+        //shared_ptr<BoundarySlip> bSlip = make_shared<BoundarySlip>();
         shared_ptr<BoundarySine> bSine = \
-                make_shared<BoundarySine>(1e-6,5,time,*this,init(0));
+                make_shared<BoundarySine>(1e-6,5.0,time,*this,init(Point({0.0,0.0})));
         shared_ptr<BoundaryConstant> bConst = \
-                make_shared<BoundaryConstant>(init(0));
+                make_shared<BoundaryConstant>(init(Point({0.0,0.0})));
+
+
+        bc = {bSine, bConst};
+    }
+    else if (caseName == "dipole")
+    {
+        //shared_ptr<BoundaryOpen> bOpen = make_shared<BoundaryOpen>();
+        //shared_ptr<BoundarySlip> bSlip = make_shared<BoundarySlip>();
+        shared_ptr<BoundarySineDir> bSine = \
+                make_shared<BoundarySineDir>(1e-6,5.0,time,*this,init(Point({0.0,0.0})));
+        shared_ptr<BoundaryConstant> bConst = \
+                make_shared<BoundaryConstant>(init(Point({0.0,0.0})));
 
 
         bc = {bSine, bConst};
@@ -197,12 +211,12 @@ void Problem::setAlpha(const std::vector<numvector<double, 5 * nShapes> >& a)
 double Problem::getPressure(const numvector<double, 5>& sol) const
 {
     // uncomment for LEE
-//    numvector<double,5> initfun = init(Point({0.0,0.0}));
+    numvector<double,5> initfun = init(Point({0.0,0.0}));
 
-//    double rho0 = initfun[0];
-//    double p0 = initfun[4] * (cpcv - 1);
+    double rho0 = initfun[0];
+    double p0 = initfun[4] * (cpcv - 1);
 
-//    return p0 * pow(sol[0] / rho0 , cpcv);
+    return p0 * pow(sol[0] / rho0 , cpcv);
 
     // end uncomment for LEE
 

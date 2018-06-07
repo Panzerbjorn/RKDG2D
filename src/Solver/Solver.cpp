@@ -30,6 +30,7 @@ void Solver::write(string fileName, const vector<numvector<double,5*nShapes>>& c
 void Solver::writeSolutionVTK(string fileName) const
 {
     ofstream output;
+    output.precision(16);
     output.open(fileName + ".vtk");
 
     mesh.exportMeshVTK(output);

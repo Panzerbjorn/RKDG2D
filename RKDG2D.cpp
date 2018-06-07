@@ -39,17 +39,17 @@ int main(int argc, char** argv)
     // Problem
 
 
-    string caseName = "forwardStep";
+    string caseName = "dipole";
 
     // Time parameters
 
-    double tStart = 0.13;
+    double tStart = 0.0;
 
-    double tEnd = 4.0;
+    double tEnd = 3.0;
 
-    bool defCoeffs = true;
+    bool defCoeffs = false;
 
-    double initDeltaT = 5e-4;
+    double initDeltaT = 1.25e-3;
 
     bool isDynamicTimeStep = false;
     double Co = 0.1;
@@ -57,7 +57,7 @@ int main(int argc, char** argv)
     double maxTauGrowth = 1.2;
 
 
-    int freqWrite = 20;
+    int freqWrite = 80;
 
 
     // ---------------
@@ -75,7 +75,7 @@ int main(int argc, char** argv)
     problem.setBoundaryConditions(caseName, mesh.patches);
 
     // Initialize flux
-    FluxHLLC numFlux(problem);
+    FluxLLF numFlux(problem);
 
     // Initialize solver
     Solver solver(mesh, problem, numFlux);
@@ -84,7 +84,7 @@ int main(int argc, char** argv)
     TimeControl dynamicTimeController(mesh,Co,maxDeltaT,maxTauGrowth,initDeltaT,isDynamicTimeStep);
 
     // Initialize indicator
-    IndicatorKXRCF indicator(mesh, problem);
+    IndicatorNowhere indicator(mesh, problem);
 
     // Initialize limiter
     LimiterRiemannWENOS limiter(indicator, problem);
@@ -120,9 +120,9 @@ int main(int argc, char** argv)
     double tau = initDeltaT;
 
     vector<numvector<double, 5*nShapes>> lhs = solver.alphaPrev; // coeffs
-    vector<numvector<double, 5*nShapes>> lhsPrev = lhs;
+    //vector<numvector<double, 5*nShapes>> lhsPrev = lhs;
 
-    // run Runge --- Kutta 2 TVD
+    // run Runge --- Kutta 3 TVD
 
     vector<numvector<double, 5*nShapes>> k1, k2, k3;
 
