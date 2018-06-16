@@ -1,5 +1,5 @@
-//- RKDG 2D v.0.1
-//  Structured rectangular mesh
+//- RKDG 2D v.0.2
+//  Unstructured 2D mesh
 
 #if !defined(__linux__)
 #include <direct.h>
@@ -39,17 +39,17 @@ int main(int argc, char** argv)
     // Problem
 
 
-    string caseName = "dipole";
+    string caseName = "SodX";
 
     // Time parameters
 
     double tStart = 0.0;
 
-    double tEnd = 3.0;
+    double tEnd = 0.2;
 
     bool defCoeffs = false;
 
-    double initDeltaT = 1.25e-3;
+    double initDeltaT = 1e-3;
 
     bool isDynamicTimeStep = false;
     double Co = 0.1;
@@ -57,7 +57,7 @@ int main(int argc, char** argv)
     double maxTauGrowth = 1.2;
 
 
-    int freqWrite = 80;
+    int freqWrite = 100;
 
 
     // ---------------
@@ -84,10 +84,10 @@ int main(int argc, char** argv)
     TimeControl dynamicTimeController(mesh,Co,maxDeltaT,maxTauGrowth,initDeltaT,isDynamicTimeStep);
 
     // Initialize indicator
-    IndicatorNowhere indicator(mesh, problem);
+    IndicatorKXRCF indicator(mesh, problem);
 
     // Initialize limiter
-    LimiterRiemannWENOS limiter(indicator, problem);
+    LimiterWENOS limiter(indicator, problem);
 
     // ---------------
 

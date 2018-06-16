@@ -33,39 +33,53 @@ void Solver::writeSolutionVTK(string fileName) const
     output.precision(16);
     output.open(fileName + ".vtk");
 
-    mesh.exportMeshVTK(output);
-
+    mesh.exportMeshVTK_polyvertices(output);
     output << "CELL_DATA " << mesh.nCells << endl;
+
+    output << "POINT_DATA " << mesh.nEntitiesTotal << endl;
 
     output << "SCALARS rho double" << endl;
     output << "LOOKUP_TABLE default" << endl;
     //output << "rho" << " 1" << " " << mesh.nCells << " float" << endl;
 
-    for (int i = 0; i < mesh.nCells; ++i)
-       output << mesh.cells[i]->reconstructSolution(mesh.cells[i]->getCellCenter(),0) << endl;
+    for (const shared_ptr<Cell> cell : mesh.cells)
+        for (int j = 0; j < cell->nEntities; ++j)
+            output << cell->reconstructSolution(cell->nodes[j], 0) << endl;
 
     output << "SCALARS e double" << endl;
     output << "LOOKUP_TABLE default" << endl;
     //output << "e" << " 1" << " " << mesh.nCells << " float" << endl;
 
-    for (int i = 0; i < mesh.nCells; ++i)
-       output << mesh.cells[i]->reconstructSolution(mesh.cells[i]->getCellCenter(),4) << endl;
+    for (const shared_ptr<Cell> cell : mesh.cells)
+        for (int j = 0; j < cell->nEntities; ++j)
+            output << cell->reconstructSolution(cell->nodes[j], 4) << endl;
 
-    output << "VECTORS rhoU double" << endl;
+    output << "SCALARS p double" << endl;
+    output << "LOOKUP_TABLE default" << endl;
+    //output << "e" << " 1" << " " << mesh.nCells << " float" << endl;
+
+    for (const shared_ptr<Cell> cell : mesh.cells)
+        for (int j = 0; j < cell->nEntities; ++j)
+            output << problem.getPressure(cell->reconstructSolution(cell->nodes[j])) << endl;
+
+
+    output << "VECTORS U double" << endl;
     //output << "rhoU " << " 3" << " " << mesh.nCells << " float" << endl;
 
-    for (int i = 0; i < mesh.nCells; ++i)
-    {
-       output << mesh.cells[i]->reconstructSolution(mesh.cells[i]->getCellCenter(),1) << ' ';
-       output << mesh.cells[i]->reconstructSolution(mesh.cells[i]->getCellCenter(),2) << ' ';
-       output << 0.0 << endl;
-    }
+    for (const shared_ptr<Cell> cell : mesh.cells)
+        for (int j = 0; j < cell->nEntities; ++j)
+        {
+            double rho = cell->reconstructSolution(cell->nodes[j], 0);
+            output << cell->reconstructSolution(cell->nodes[j], 1) / rho << endl;
+            output << cell->reconstructSolution(cell->nodes[j], 2) / rho << endl;
+            output << 0.0 << endl;
+        }
 
-    output << "POINT_DATA " << mesh.nodes.size() << endl;
 
     output.close();
-
 }
+
+
 
 
 void Solver::setInitialConditions()
