@@ -63,6 +63,15 @@ void Problem::setInitialConditions(string caseName)
         initV   = [](const Point& r) { return 0.0; };
         initU   = [](const Point& r) { return 0.0; };
     }
+    else if (caseName == "SodCircle")
+    {
+        cpcv = 1.4;
+
+        initRho = [](const Point& r) { return (r.length() <= 0.4) ? 1.0 : 0.125; };
+        initP   = [](const Point& r) { return (r.length() <= 0.4) ? 1.0 : 0.1;  };
+        initV   = [](const Point& r) { return 0.0; };
+        initU   = [](const Point& r) { return 0.0; };
+    }
     else if (caseName == "Woodward")
     {
         cpcv = 1.4;
@@ -161,6 +170,12 @@ void Problem::setBoundaryConditions(string caseName, const std::vector<Patch>& p
                 make_shared<BoundaryConstant>(numvector<double,5>({1.0, -3.0, 0.0, 0.0, 6.286}));
 
         bc = {bConst, bOpen, bSlip, bSlip};
+    }
+    else if (caseName == "SodCircle")
+    {
+        shared_ptr<BoundarySlip> bSlip = make_shared<BoundarySlip>();
+
+        bc = {bSlip, bSlip, bSlip};
     }
     else if (caseName == "monopole")
     {

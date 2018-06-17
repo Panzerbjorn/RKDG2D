@@ -39,25 +39,28 @@ int main(int argc, char** argv)
     // Problem
 
 
-    string caseName = "SodX";
+    string caseName = "SodCircle";
 
     // Time parameters
 
     double tStart = 0.0;
+    double tEnd = 0.25;
 
-    double tEnd = 0.2;
+    double outputInterval = 0.05;
 
     bool defCoeffs = false;
 
     double initDeltaT = 1e-3;
 
-    bool isDynamicTimeStep = false;
-    double Co = 0.1;
+    bool isDynamicTimeStep = true;
+    double Co = 0.25;
     double maxDeltaT = 1.0;
-    double maxTauGrowth = 1.2;
+    double maxTauGrowth = 1.1;
 
 
-    int freqWrite = 100;
+    //int freqWrite = 1;
+
+
 
 
     // ---------------
@@ -75,7 +78,7 @@ int main(int argc, char** argv)
     problem.setBoundaryConditions(caseName, mesh.patches);
 
     // Initialize flux
-    FluxLLF numFlux(problem);
+    FluxHLLC numFlux(problem);
 
     // Initialize solver
     Solver solver(mesh, problem, numFlux);
@@ -115,7 +118,7 @@ int main(int argc, char** argv)
 
 
 
-   // time step
+    // time step
 
     double tau = initDeltaT;
 
@@ -135,6 +138,7 @@ int main(int argc, char** argv)
     t00 = clock();
 
     int iT = 1; //iteration number
+    int nOutputSteps = 1;
 
     for (double t = tStart + tau; t <= tEnd + 0.5*tau; t += tau)
     {
@@ -224,12 +228,14 @@ int main(int argc, char** argv)
        //cout << "after limiting" << solver.alphaNext[49] << endl;
 //       solver.write("alphaCoeffs/" + to_string(t)+"RK2bl",lhs);
 
-       if (iT % freqWrite == 0)
+       //if (iT % freqWrite == 0)
+       if (fabs(t - nOutputSteps * outputInterval) < 1e-10)
        {
            //string fileName = "alphaCoeffs/" + to_string((long double)t);
 
            solver.writeSolutionVTK("alphaCoeffs/sol_" + to_string(t));
            solver.write("alphaCoeffs/" + to_string(t),lhs);
+           nOutputSteps++;
        }
 
        // check total energy conservation
@@ -272,13 +278,13 @@ int main(int argc, char** argv)
        solver.alphaPrev = solver.alphaNext;
        //lhsPrev = lhs;
 
-       iT++;
+       //iT++;
 
        t2 = clock();
 
        dynamicTimeController.updateTimeStep();
 
-       tau = dynamicTimeController.getNewTau();
+       tau = min(nOutputSteps * outputInterval - t, dynamicTimeController.getNewTau());
 
        cout << "step time: " << (float)(t2 - t1) / CLOCKS_PER_SEC << endl;
     }

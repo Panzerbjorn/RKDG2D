@@ -12,7 +12,7 @@ void LimiterWENOS::limit(vector<numvector<double, 5 * nShapes>>& alpha)
     // linear weights
 
     vector<double> gamma;
-    double g = 0.1;
+    double g = 0.001;
 
     int nIter = 1;
 
@@ -161,25 +161,24 @@ void LimiterWENOS::limit(vector<numvector<double, 5 * nShapes>>& alpha)
     }
 
 
-//    for (const shared_ptr<Cell> cell : indicator.mesh.cells)
-//        for (const shared_ptr<Point> node : cell->nodes)
-//        {
-//            numvector<double, 5> res = cell->reconstructSolution(node);
+    for (const shared_ptr<Cell> cell : indicator.mesh.cells)
+        for (const shared_ptr<Point> node : cell->nodes)
+        {
+            numvector<double, 5> res = cell->reconstructSolution(node);
 
-//            if (res[0] < 0 || res[4] < 0 || problem.getPressure(res) < 0)
-//            {
-//                cout << "negative values after limitation in cell #" << cell->number << endl;
-//                cout << "rho | rhoU | e = " << cell->reconstructSolution(node) << endl;
-//                cout << "p = " << problem.getPressure(cell->reconstructSolution(node)) << endl;
+            if (res[0] < 0 || res[4] < 0 || problem.getPressure(res) < 0)
+            {
+                cout << "negative values after limitation in cell #" << cell->number << endl;
+                cout << "rho | rhoU | e = " << cell->reconstructSolution(node) << endl;
+                cout << "p = " << problem.getPressure(cell->reconstructSolution(node)) << endl;
 
-//                for (int j = 0; j < 5; ++j)
-//                {
-//                    alpha[cell->number][j*nShapes + 1] = 0.0;
-//                    alpha[cell->number][j*nShapes + 2] = 0.0;
-//                }
-//            }
-//        }
+                for (int j = 0; j < 5; ++j)
+                {
+                    alpha[cell->number][j*nShapes + 1] = 0.0;
+                    alpha[cell->number][j*nShapes + 2] = 0.0;
+                }
+            }
+        }
 
     problem.setAlpha(alpha);
-
 }
